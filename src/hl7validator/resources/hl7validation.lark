@@ -1,0 +1,59 @@
+// "MSH.9.1.1" must be "OML"
+// "MSH.9.1.2" must be "O21"
+// "MSH.3.1.1" must be not empty
+// "MSH.3.1.1" may be "Lab system"
+// "MSH.3.1.1" may be string
+// "MSH.3.1.1" may be one of "Lab1", "Lab2", "Lab3"
+// "MSH.3.2" cannot be int
+// "MSH.3.3" must be be int
+// "MSH.3.3" must be int if "MSH.4" is empty
+
+start: rule+
+
+rule: base_rule [ "if" check_rule ] -> create_rule
+
+base_rule: selector_field predicate
+
+check_rule: selector_field test -> create_check_rule
+
+// ABC.1
+// ABC.1.2
+// ABC.1.2.3
+
+selector_field : "\"" + /[A-Z]{3}\.\d+(\.\d+)*/ + "\""  -> selector_field
+selector_segment: "\"" + /[A-Z]{3}/ + "\""      -> selector_segment
+
+selector: selector_field | selector_segment
+
+predicate: "must be"  CHECK_VALUES              -> must_be_value // must be 'a', 'b', 1
+           | "must be"  CHECK_TYPES             -> must_be_type // must be int, string
+           | "may be" CHECK_TYPES               -> may_be_type
+           | "may be" CHECK_VALUES              -> may_be_value
+           | "may be one of" list_of_values     -> may_be_one_of
+           | "must be one of" list_of_values     -> must_be_one_of
+           | "cannot be one of" list_of_values     -> cannot_be_one_of
+           | "cannot be"  CHECK_VALUES          -> cannot_be_value
+           | "cannot be"  CHECK_TYPES           -> cannot_be_type
+           | "must be not empty"                -> must_be_not_empty
+           | "must be empty"                    -> must_be_empty
+
+test: "is of value"  CHECK_VALUES               -> test_is_value
+     | "is empty"                               -> test_is_empty
+     | "is one of" list_of_values               -> test_list_of_values
+     | "is not empty"                           -> test_is_not_empty
+     | "is of type" CHECK_TYPES                 -> test_is_type
+
+CHECK_TYPES: "int" | "string"
+
+%import common (NUMBER, INT, ESCAPED_STRING, WS)
+%ignore WS
+
+ESCAPED_STRINGS: ESCAPED_STRING+
+
+CHECK_VALUES: NUMBER | INT | ESCAPED_STRING | ESCAPED_STRINGS
+
+list_of_values: CHECK_VALUES ["," CHECK_VALUES]*
+
+PREDICATE_VALUE: CHECK_TYPES | CHECK_VALUES
+
+predicate_values: PREDICATE_VALUE | list_of_values
