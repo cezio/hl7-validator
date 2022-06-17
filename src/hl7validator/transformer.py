@@ -2,7 +2,7 @@ import typing
 import hl7
 import lark
 from .selectors import SegmentSelector, FieldSelector
-from .values import StringValue, ConstValue, IntValue, OneOfValues, AnyValue
+from .values import StringValue, ConstValue, IntValue, OneOfValues, AnyValue, RegexpValue
 from .predicates import MustBe, MayBe, CannotBe
 from .rules import ValidationRule
 
@@ -22,25 +22,7 @@ def get_type_for_check_type(value: str):
 @lark.v_args(inline=True)
 class HL7Transformer(lark.Transformer):
     """
-
-predicate: "must be"  CHECK_VALUES              -> must_be_value // must be 'a', 'b', 1
-           | "must be"  CHECK_TYPES             -> must_be_type // must be int, string
-           | "may be" CHECK_TYPES               -> may_be_type
-           | "may be" CHECK_VALUES              -> may_be_value
-           | "may be one of" list_of_values     -> may_be_one_of
-           | "must be one of" list_of_values     -> must_be_one_of
-           | "cannot be one of" list_of_values     -> cannot_be_one_of
-           | "cannot be"  CHECK_VALUES          -> cannot_be_value
-           | "cannot be"  CHECK_TYPES           -> cannot_be_type
-           | "must be not empty"                -> must_be_not_empty
-           | "must be empty"                    -> must_be_empty
-
-test: "is of value"  CHECK_VALUES               -> test_is_value
-     | "is empty"                               -> test_is_empty
-     | "is one of" list_of_values               -> test_list_of_values
-     | "is not empty"                           -> test_is_not_empty
-     | "is of type" CHECK_TYPES                 -> test_is_type
-
+    Tree transformer for validation rules
     """
 
     def __init__(self):
@@ -52,7 +34,13 @@ test: "is of value"  CHECK_VALUES               -> test_is_value
     def selector_segment(self, value: lark.Token):
         return SegmentSelector(value.value)
 
-    def must_be_value(self, value: lark.Token):
+    def must_be_value(self, value: typing.Union[lark.Token, lark.Tree]):
+
+        if isinstance(value, lark.Tree) and value.data == 'regexp':
+            return MustBe(RegexpValue(''.join([v.value for v in value.children])))
+        elif value.value.startswith('r"') and value.value.endswith('"'):
+            val = value.value[2:][:-1]
+            return MustBe(RegexpValue(val))
         return MustBe(ConstValue(value.value))
 
     def must_be_one_of(self, values: lark.Tree):
@@ -104,24 +92,25 @@ test: "is of value"  CHECK_VALUES               -> test_is_value
         value_converter = get_type_for_check_type(value.value)
         return MustBe(value_converter)
 
-    def _create_rule(self, tree, *args):
-        values = tree.children
-        test_rule = None
-        if len(values) == 2:
-            selector, predicate = values
-        else:
-            selector, predicate, test_rule = values
-
+    def _create_rule(self, selector, predicate, test_rule = None):
         rule = ValidationRule(selector=selector, predicate=predicate, test_rule=test_rule)
         return rule
 
-    def create_rule(self, tree, *args):
-        rule = self._create_rule(tree, *args)
+    def create_rule(self, base_rule: lark.Tree, *args):
+        # check rule in children
+        if isinstance(base_rule.children[0], lark.Tree):
+            _test_rule = self._create_rule(*(base_rule.children[1].children))
+            selector, predicate = base_rule.children[0].children
+        else:
+            _test_rule = None
+            selector, predicate = base_rule.children
+        rule = self._create_rule(selector, predicate, _test_rule)
         self.rules.append(rule)
         return rule
 
-    def create_test_rule(self, tree, *args):
-        rule = self._create_rule(tree, *args)
+    def create_check_rule(self, selector, predicate, *args, **kwargs):
+
+        rule = self._create_rule(selector, predicate)
         return rule
 
     def get_rules(self) -> typing.List[ValidationRule]:

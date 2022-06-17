@@ -1,4 +1,6 @@
 import typing
+import re
+
 
 class BaseValue:
 
@@ -39,6 +41,21 @@ class IntValue(BaseConverter):
 class AnyValue(BaseConverter):
     converter = bool
 
+
+class RegexpValue(BaseValue):
+    def __init__(self, re_value: str):
+        self._re = re_value
+        self.re = re.compile(self._re)
+
+    def eval(self, in_value: str) -> typing.Any:
+        assert self.re.match(in_value)
+        return in_value
+
+    def __str__(self):
+        return f'<{self.__class__.__name__}({self._re})>'
+
+    __repr__ = __str__
+
 class ConstValue(BaseValue):
 
     def __init__(self, const: str):
@@ -68,4 +85,4 @@ class OneOfValues(BaseValue):
 
     __repr__ = __str__
 
-__all__ = ['AnyValue', 'IntValue', 'StringValue', 'ConstValue', 'OneOfValues']
+__all__ = ['AnyValue', 'IntValue', 'StringValue', 'ConstValue', 'OneOfValues', "RegexpValue"]

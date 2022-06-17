@@ -10,11 +10,12 @@
 
 start: rule+
 
-rule: base_rule [ "if" check_rule ] -> create_rule
+rule: test_rule                       -> create_rule
+    | base_rule                         -> create_rule
 
 base_rule: selector_field predicate
-
-check_rule: selector_field test -> create_check_rule
+test_rule: base_rule "if" check_rule
+check_rule: selector_field test
 
 // ABC.1
 // ABC.1.2
@@ -25,7 +26,8 @@ selector_segment: "\"" + /[A-Z]{3}/ + "\""      -> selector_segment
 
 selector: selector_field | selector_segment
 
-predicate: "must be"  CHECK_VALUES              -> must_be_value // must be 'a', 'b', 1
+predicate: "must be"  CHECK_VALUES              -> must_be_value // must be "a", "b", 1, r"2022010102"
+           | "must match" REGEXP                   -> must_be_value // must be r"[a-z]+"
            | "must be"  CHECK_TYPES             -> must_be_type // must be int, string
            | "may be" CHECK_TYPES               -> may_be_type
            | "may be" CHECK_VALUES              -> may_be_value
@@ -38,6 +40,7 @@ predicate: "must be"  CHECK_VALUES              -> must_be_value // must be 'a',
            | "must be empty"                    -> must_be_empty
 
 test: "is of value"  CHECK_VALUES               -> test_is_value
+     | "matches" REGEXP                         -> test_is_value
      | "is empty"                               -> test_is_empty
      | "is one of" list_of_values               -> test_list_of_values
      | "is not empty"                           -> test_is_not_empty
@@ -47,8 +50,12 @@ CHECK_TYPES: "int" | "string"
 
 %import common (NUMBER, INT, ESCAPED_STRING, WS)
 %ignore WS
+%ignore COMMENT
 
 ESCAPED_STRINGS: ESCAPED_STRING+
+
+REGEXP: /r".*?"/
+
 
 CHECK_VALUES: NUMBER | INT | ESCAPED_STRING | ESCAPED_STRINGS
 
@@ -57,3 +64,5 @@ list_of_values: CHECK_VALUES ["," CHECK_VALUES]*
 PREDICATE_VALUE: CHECK_TYPES | CHECK_VALUES
 
 predicate_values: PREDICATE_VALUE | list_of_values
+
+COMMENT: /\s*/ "//" /[^\n]/*

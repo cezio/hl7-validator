@@ -1,0 +1,15 @@
+// this is a comment
+// this value must not be empty
+ "MSH.3.1" must be not empty
+ // this value must be a proper string
+ "MSH.3.1" must be string
+ // cannot be that value
+ "MSH.3.1" cannot be "AnySystem"
+ // must be a specific string value
+ "MSH.3.1" must be "FromSystem"
+ // list of allowed values
+ "MSH.3.1" must be one of "FromSystem", "OtherSystem"
+ // this is a regexp
+ "MSH.7.1" must be r"[0-9]{12}"
+ // dependency on other field
+ "NTE.2.1" must be "P" if "PID.2.1" is not empty

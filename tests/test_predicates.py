@@ -1,9 +1,10 @@
 import hl7
 import pytest
 
-# from hl7validator.predicates import MustBe, MayBe
-# from hl7validator.selectors import SegmentSelector, FieldSelector
-# from hl7validator.values import StringValue, AnyValue, IntValue, ConstValue, OneOfValues, CannotBe
+from hl7validator.predicates import MustBe, MayBe, CannotBe
+from hl7validator.selectors import SegmentSelector, FieldSelector
+from hl7validator.values import StringValue, AnyValue, IntValue, ConstValue, OneOfValues
+from hl7validator.context import Context
 
 @pytest.mark.skip('old api')
 def test_predicate_must_be():
@@ -11,7 +12,8 @@ def test_predicate_must_be():
     test_msg = r'MSH|^~\\&|SrcSystem||TargetSystem|LabName|200705271331||OML^O21|12345|P|2.4\r"'
     msg = hl7.parse(test_msg)
 
-    must_be = MustBe(msg)
+    ctx = Context(message=msg)
+    must_be = MustBe(ConstValue('OML'))
     # MSH.9 = OML^O21
     assert must_be.eval(FieldSelector('MSH.9.1.1'), ConstValue('OML'))
     assert must_be.eval(FieldSelector('MSH.9.1.2'), ConstValue('O21'))
