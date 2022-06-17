@@ -82,18 +82,19 @@ def test_parser_validation_invalid():
     assert ctx.is_valid is False
 
 
-def test_parser_cli():
+def test_parser_cli_error():
     this_dir = os.path.dirname(__file__)
     tmsg = os.path.join(this_dir, 'resources', 'test.message.hl7')
     trules = os.path.join(this_dir, 'resources', 'test.incorrect.rules')
     runner = CliRunner()
-    out = runner.invoke(main, [trules, tmsg], standalone_mode=False)
-    assert out.return_value == 1
+    out = runner.invoke(main, [trules, tmsg])
+    assert out.exit_code == 1
 
-def test_parser_cli():
+def test_parser_cli_ok():
     this_dir = os.path.dirname(__file__)
     tmsg = os.path.join(this_dir, 'resources', 'test.message.hl7')
     trules = os.path.join(this_dir, 'resources', 'test.correct.rules')
     runner = CliRunner()
-    out = runner.invoke(main, [trules, tmsg], standalone_mode=False)
-    assert out.return_value == 0
+    out = runner.invoke(main, [trules, tmsg])
+    print(vars(out))
+    assert out.exit_code == 0

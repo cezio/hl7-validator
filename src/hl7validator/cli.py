@@ -22,7 +22,7 @@ def main(click_ctx: click.Context, rules: io.TextIOBase, message: io.BytesIO, qu
         click_ctx.exit(1)
     if not quiet:
         click.echo("Message is valid.")
-    return 0
+    click_ctx.exit(0)
 
 if __name__ == '__main__':
     main()
