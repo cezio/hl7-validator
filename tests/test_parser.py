@@ -96,5 +96,4 @@ def test_parser_cli_ok():
     trules = os.path.join(this_dir, 'resources', 'test.correct.rules')
     runner = CliRunner()
     out = runner.invoke(main, [trules, tmsg])
-    print(vars(out))
     assert out.exit_code == 0

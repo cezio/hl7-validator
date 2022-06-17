@@ -48,8 +48,10 @@ class MayBe(BasePredicate):
 class CannotBe(BasePredicate):
 
     def check_value(self, in_value):
+        # We want to raise assertion error only if `in_value` matches the value in .expected.
+        # this is a bit tricky, because when .expected will raise AssertionError, this should suppress the error
+        # because the value is invalid on BaseValue level, so it's valid for us.
         try:
-
             if in_value and self.expected.eval(in_value):
                 assert False, f"Value {in_value} cannot be {self.expected}"
             return in_value
