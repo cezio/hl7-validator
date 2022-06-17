@@ -3,6 +3,8 @@
 `hl7validator` provides a declarative way of validating HL7 messages. This package provides a simple DSL to describe
 validation rules. A HL7 message will be checked against those rules.
 
+[![hl7validator - GH CI pipeline (py 3.8/3.9/3.10)](https://github.com/cezio/hl7-validator/actions/workflows/python-package.yml/badge.svg?branch=master)](https://github.com/cezio/hl7-validator/actions/workflows/python-package.yml)
+
 ## Installation
 
 This is a work in progress. At the moment, the only way to install this tool is to use cloned source (into virtual env):
