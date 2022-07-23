@@ -1,16 +1,18 @@
 import io
+
 import click
-import hl7
 
 from .validator import Validator
 
 
-@click.command('validate_hl7')
-@click.argument('rules', type=click.File('rt'))
-@click.argument('message', type=click.File('rb'))
-@click.option('-q', '--quiet', is_flag=True, default=False)
+@click.command("validate_hl7")
+@click.argument("rules", type=click.File("rt"))
+@click.argument("message", type=click.File("rb"))
+@click.option("-q", "--quiet", is_flag=True, default=False)
 @click.pass_context
-def main(click_ctx: click.Context, rules: io.TextIOBase, message: io.BytesIO, quiet=False):
+def main(
+    click_ctx: click.Context, rules: io.TextIOBase, message: io.BytesIO, quiet=False
+):
     v = Validator(rules=rules.read())
     ctx = v.validate(message.read())
     if not ctx.is_valid:
@@ -24,5 +26,6 @@ def main(click_ctx: click.Context, rules: io.TextIOBase, message: io.BytesIO, qu
         click.echo("Message is valid.")
     click_ctx.exit(0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

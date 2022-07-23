@@ -1,18 +1,27 @@
 import typing
-import hl7
+
 import lark
-from .selectors import SegmentSelector, FieldSelector
-from .values import StringValue, ConstValue, IntValue, OneOfValues, AnyValue, RegexpValue
-from .predicates import MustBe, MayBe, CannotBe
-from .rules import ValidationRule
+
+from .predicates import CannotBe, MayBe, MustBe
+from .rules import FieldValidationRule, SegmentValidationRule
+from .selectors import Cardinality, FieldSelector, SegmentSelector
+from .values import (
+    AnyValue,
+    ConstValue,
+    IntValue,
+    OneOfValues,
+    RegexpValue,
+    StringValue,
+)
+
 
 def get_type_for_check_type(value: str):
 
-    if value == 'int':
+    if value == "int":
         value_converter = IntValue()
-    elif value == 'string':
+    elif value == "string":
         value_converter = StringValue()
-    elif value == 'any':
+    elif value == "any":
         value_converter = AnyValue()
     else:
         raise ValueError(f"Invalid type: {value}")
@@ -26,8 +35,11 @@ class HL7Transformer(lark.Transformer):
     """
 
     def __init__(self):
-        self.rules = []
+        self._rules = []
+        self._structure = []
+        self._imports = []
 
+    # field validation handlers
     def selector_field(self, value: lark.Token):
         return FieldSelector(value.value)
 
@@ -36,8 +48,8 @@ class HL7Transformer(lark.Transformer):
 
     def must_be_value(self, value: typing.Union[lark.Token, lark.Tree]):
 
-        if isinstance(value, lark.Tree) and value.data == 'regexp':
-            return MustBe(RegexpValue(''.join([v.value for v in value.children])))
+        if isinstance(value, lark.Tree) and value.data == "regexp":
+            return MustBe(RegexpValue("".join([v.value for v in value.children])))
         elif value.value.startswith('r"') and value.value.endswith('"'):
             val = value.value[2:][:-1]
             return MustBe(RegexpValue(val))
@@ -92,8 +104,10 @@ class HL7Transformer(lark.Transformer):
         value_converter = get_type_for_check_type(value.value)
         return MustBe(value_converter)
 
-    def _create_rule(self, selector, predicate, test_rule = None):
-        rule = ValidationRule(selector=selector, predicate=predicate, test_rule=test_rule)
+    def _create_rule(self, selector, predicate, test_rule=None):
+        rule = FieldValidationRule(
+            selector=selector, predicate=predicate, test_rule=test_rule
+        )
         return rule
 
     def create_rule(self, base_rule: lark.Tree, *args):
@@ -105,7 +119,7 @@ class HL7Transformer(lark.Transformer):
             _test_rule = None
             selector, predicate = base_rule.children
         rule = self._create_rule(selector, predicate, _test_rule)
-        self.rules.append(rule)
+        self._rules.append(rule)
         return rule
 
     def create_check_rule(self, selector, predicate, *args, **kwargs):
@@ -113,5 +127,47 @@ class HL7Transformer(lark.Transformer):
         rule = self._create_rule(selector, predicate)
         return rule
 
-    def get_rules(self) -> typing.List[ValidationRule]:
-        return self.rules
+    def optional_segment(self, segment: SegmentSelector):
+        segment.cardinality = Cardinality.SEGMENT_AT_MOST_ONE
+        return segment
+
+    def structure_segment(
+        self,
+        level: str,
+        segment: SegmentSelector,
+        card_token: lark.Token = None,
+        *args,
+        **kwargs,
+    ):
+        last: typing.Optional[SegmentSelector] = None
+        try:
+            last = self._structure[-1]
+        except IndexError:
+            pass
+        segment.level = len(level)
+        if card_token:
+            card = Cardinality(card_token.children[0].value)
+            segment.cardinality = card
+
+        if last:
+            p = last
+            while p.level >= segment.level:
+                p = p.parent
+            if p:
+                segment.set_parent(p)
+        self._structure.append(segment)
+        return segment
+
+    # def import_rule(self, rule_token: lark.Token, *args, **kwargs):
+    #     self._rules.append(rule_token.value)
+
+    # structure handlers
+    def get_rules(self) -> typing.List[FieldValidationRule]:
+        return self._rules
+
+    def get_structure(self) -> typing.List[SegmentValidationRule]:
+        # roots only
+        return [SegmentValidationRule(p) for p in self._structure if p.parent is None]
+
+    def get_imports(self) -> typing.List[str]:
+        return self._imports

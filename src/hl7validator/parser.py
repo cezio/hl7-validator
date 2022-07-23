@@ -1,7 +1,8 @@
-import lark
 import pkgutil
 
-DEFAULT_GRAMMAR = 'resources/hl7validation.lark'
+import lark
+
+DEFAULT_GRAMMAR = "resources/hl7validation.lark"
 
 
 def create_parser(grammar: str = None) -> lark.Lark:
@@ -10,8 +11,8 @@ def create_parser(grammar: str = None) -> lark.Lark:
     :param grammar:
     :return:
     """
-    data = pkgutil.get_data(__name__, grammar or DEFAULT_GRAMMAR).decode('utf-8')
-    return lark.Lark(data)
+    data = pkgutil.get_data(__name__, grammar or DEFAULT_GRAMMAR).decode("utf-8")
+    return lark.Lark(data)  # , parser='lalr')
 
 
 def parse_rules(parser: lark.Lark, rules: str) -> lark.Tree:

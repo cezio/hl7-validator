@@ -55,6 +55,7 @@ def test_parser_validation_ok():
 """
     validator = Validator(rules=rules)
     ctx = validator.validate(test_msg)
+    print(ctx.get_errors())
     assert ctx.is_valid
 
 def test_parser_validation_invalid():
@@ -97,3 +98,49 @@ def test_parser_cli_ok():
     runner = CliRunner()
     out = runner.invoke(main, [trules, tmsg])
     assert out.exit_code == 0
+
+def test_structure_validation_ok():
+    test_msg = (b'MSH|^~\\&|SrcSystem||TargetSystem|LabName|200705271331||OML^O21|12345|P|2.4\r' 
+               b'PID|1|0000|||\r' 
+               b'PV1||||\r'
+               b'OBR|||\r'
+               b'ABC||||\r'
+               b'NTE|||\r'
+               b'NTE|||\r'
+               )
+
+    rules = """
+import "blahblah"
+
+ MSH
+   PID  0..1
+     // [XXX] notation is an equivalent of XXX 0..1
+     [PV1]
+     NTE 1..n
+   OBR  1..n
+     NTE 0..1
+  
+// this is a comment
+// this value must not be empty
+ "MSH.3.1" must be not empty
+ // this value must be a proper string
+ "MSH.3.1" must be string
+ // cannot be that value
+ "MSH.3.1" cannot be "AnySystem"
+ // must be a specific string value
+ "MSH.3.1" must be "SrcSystem"
+ // list of allowed values
+ "MSH.3.1" must be one of "SrcSystem", "OtherSystem"
+ // this is a regexp
+ "MSH.7.1" must match r"[0-9]{12}" if "MSH.7.1" is not empty
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+    for lm in ctx.log:
+        print(lm)
+    print('errors ---')
+    for err in ctx.get_errors():
+        print(err)
+        print((err.rule.context.message,))
+    assert ctx.is_valid
+    assert False

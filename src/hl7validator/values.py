@@ -1,16 +1,16 @@
-import typing
 import re
+import typing
 
 
 class BaseValue:
-
     def eval(self, *args, **kwargs):
         raise NotImplemented()
 
     def __str__(self):
-        return f'<{self.__class__.__name__}>'
+        return f"<{self.__class__.__name__}>"
 
     __repr__ = __str__
+
 
 class BaseConverter(BaseValue):
     converter: typing.ClassVar[typing.Callable]
@@ -25,7 +25,7 @@ class BaseConverter(BaseValue):
             assert False, f"Invalid input {in_value} for {self.converter}"
 
     def __str__(self):
-        return f'<{self.__class__.__name__}>'
+        return f"<{self.__class__.__name__}>"
 
     __repr__ = __str__
 
@@ -52,12 +52,12 @@ class RegexpValue(BaseValue):
         return in_value
 
     def __str__(self):
-        return f'<{self.__class__.__name__}({self._re})>'
+        return f"<{self.__class__.__name__}({self._re})>"
 
     __repr__ = __str__
 
-class ConstValue(BaseValue):
 
+class ConstValue(BaseValue):
     def __init__(self, const: str):
         self.const = const.strip('"')
 
@@ -66,13 +66,12 @@ class ConstValue(BaseValue):
         return in_value
 
     def __str__(self):
-        return f'<{self.__class__.__name__}: {self.const}>'
+        return f"<{self.__class__.__name__}: {self.const}>"
 
     __repr__ = __str__
 
 
 class OneOfValues(BaseValue):
-
     def __init__(self, *values):
         self.values = [v.strip('"') for v in values]
 
@@ -81,8 +80,16 @@ class OneOfValues(BaseValue):
         return in_value
 
     def __str__(self):
-        return f'<{self.__class__.__name__}: {self.values}>'
+        return f"<{self.__class__.__name__}: {self.values}>"
 
     __repr__ = __str__
 
-__all__ = ['AnyValue', 'IntValue', 'StringValue', 'ConstValue', 'OneOfValues', "RegexpValue"]
+
+__all__ = [
+    "AnyValue",
+    "IntValue",
+    "StringValue",
+    "ConstValue",
+    "OneOfValues",
+    "RegexpValue",
+]

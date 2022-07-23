@@ -8,7 +8,18 @@
 // "MSH.3.3" must be be int
 // "MSH.3.3" must be int if "MSH.4" is empty
 
-start: rule+
+start: structure
+
+structure: import_rules segments ruleset // first structure then field rules
+
+
+import_rules: (import_rule+)?
+
+import_rule: "import" ESCAPED_STRING  -> import_rule
+
+segments: (structure_segment+)? -> create_segment
+
+ruleset: rule+
 
 rule: test_rule                       -> create_rule
     | base_rule                         -> create_rule
@@ -22,9 +33,28 @@ check_rule: selector_field test
 // ABC.1.2.3
 
 selector_field : "\"" + /[A-Z]{3}\.\d+(\.\d+)*/ + "\""  -> selector_field
-selector_segment: "\"" + /[A-Z]{3}/ + "\""      -> selector_segment
 
-selector: selector_field | selector_segment
+_selector_segment_a: /([A-Z]{3})/
+_selector_segment_b: /([A-Z]{2}[0-9]{1})/
+// MSH, PID, PV1
+selector_segment: _selector_segment_a | _selector_segment_b
+
+// selector: selector_field | selector_segment
+
+optional_selector_segment: "[" selector_segment "]"                         -> optional_segment
+
+segment_cardinality: SEGMENT_NONE | SEGMENT_ONE | SEGMENT_AT_LEAST_ONE | SEGMENT_MANY | SEGMENT_AT_MOST_ONE
+
+// MSH 1
+// PID 1
+// [PV1] 0..n
+//   [OBX] 0..n
+// ORC 1..n
+//   OBR 1..n
+//   OBX 0..n
+//   NTE 0..n
+
+structure_segment: /(\s+)/(optional_selector_segment|selector_segment (segment_cardinality)?) -> structure_segment
 
 predicate: "must be"  CHECK_VALUES              -> must_be_value // must be "a", "b", 1, r"2022010102"
            | "must match" REGEXP                   -> must_be_value // must be r"[a-z]+"
@@ -54,8 +84,10 @@ CHECK_TYPES: "int" | "string"
 
 ESCAPED_STRINGS: ESCAPED_STRING+
 
+// r"regexp contents"
 REGEXP: /r".*?"/
 
+_NL: /(\r?\n)+\s*/
 
 CHECK_VALUES: NUMBER | INT | ESCAPED_STRING | ESCAPED_STRINGS
 
@@ -66,3 +98,8 @@ PREDICATE_VALUE: CHECK_TYPES | CHECK_VALUES
 predicate_values: PREDICATE_VALUE | list_of_values
 
 COMMENT: /\s*/ "//" /[^\n]/*
+SEGMENT_NONE: "0"
+SEGMENT_ONE: "1"
+SEGMENT_AT_MOST_ONE: "0..1"
+SEGMENT_AT_LEAST_ONE: "1..n"
+SEGMENT_MANY: "0..n"

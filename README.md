@@ -50,8 +50,8 @@ the script:
 
 $ validate_hl7 tests/resources/test.incorrect.rules tests/resources/test.message.hl7 
 Message is invalid:
- * validation error for <FieldSelector sel=MSH.3.1> value FromSystem | <ValidationRule: <FieldSelector sel=MSH.3.1> <MustBe(expected=<ConstValue: SrcSystem>)> >
- * validation error for <FieldSelector sel=MSH.3.1> value FromSystem | <ValidationRule: <FieldSelector sel=MSH.3.1> <MustBe(expected=<OneOfValues: ['SrcSystem', 'OtherSystem']>)> >
+ * validation error for <FieldSelector sel=MSH.3.1> value FromSystem | <FieldValidationRule: <FieldSelector sel=MSH.3.1> <MustBe(expected=<ConstValue: SrcSystem>)> >
+ * validation error for <FieldSelector sel=MSH.3.1> value FromSystem | <FieldValidationRule: <FieldSelector sel=MSH.3.1> <MustBe(expected=<OneOfValues: ['SrcSystem', 'OtherSystem']>)> >
 $ echo $?
 1
 ```

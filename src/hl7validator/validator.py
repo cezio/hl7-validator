@@ -3,13 +3,14 @@ import typing
 import hl7
 import lark
 
+from .context import Context
 from .parser import create_parser
 from .predicates import BasePredicate
 from .transformer import HL7Transformer
-from .context import Context, LogMessage
+from .mixins import ValidateMixin, ContextMixin
 
 
-class Validator:
+class Validator(ContextMixin, ValidateMixin):
     """
     Validator class wraps whole grammar parser->rules parsing->payload validation process
 
@@ -28,6 +29,7 @@ class Validator:
         self.grammar = grammar
         self._rules: lark.Tree = None
         self.transformer: HL7Transformer = None
+        self.context = None
 
     def get_parser(self, grammar: str = None) -> lark.Lark:
         """
@@ -51,7 +53,7 @@ class Validator:
         parser = self.get_parser(grammar)
         return parser.parse(rules)
 
-    def validate(self, msg: typing.Union[str, bytes, hl7.Message]) -> Context:
+    def validate(self, msg: typing.Union[str, bytes, hl7.Message] = None) -> Context:
         """
         Validates a specific message if it matches a given profile
 
@@ -60,13 +62,26 @@ class Validator:
         :param msg:
         :return:
         """
+        if not isinstance(msg, hl7.Message):
+            msg = hl7.parse(msg)
+        ctx = self.context or Context(message=msg)
+
+        if not ctx.message:
+            raise ValueError('empty message')
+        self.set_context(ctx)
+
         self.transformer = transformer = HL7Transformer()
         if not isinstance(msg, hl7.Message):
             msg = hl7.parse(msg)
         tree = self._get_parser_tree(rules=self.rules, grammar=self.grammar)
         transformer.transform(tree)
+        imports = transformer.get_imports()
         rules = transformer.get_rules()
-        ctx = Context(message=msg)
+        struct = transformer.get_structure()
+        # first: check structure
+        for seg in struct:
+            seg.set_context(ctx).validate()
+        # then check specific fields
         for rule in rules:
             rule.set_context(ctx).validate()
         return ctx

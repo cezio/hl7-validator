@@ -24,4 +24,4 @@ class AndOperator(BaseOperator):
         return bool(self.args) and all([arg.eval() for arg in self.args])
 
 
-__all__ = ['AndOperator', 'OrOperator']
+__all__ = ["AndOperator", "OrOperator"]
