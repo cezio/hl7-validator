@@ -1,7 +1,12 @@
+import logging
+import pkgutil
 import typing
+from urllib.parse import urlparse
 
 import lark
 
+from .exceptions import RuleImportError
+from .parser import FILE_LOCATION, PACKAGE_LOCATION, create_parser
 from .predicates import CannotBe, MayBe, MustBe
 from .rules import FieldValidationRule, SegmentValidationRule
 from .selectors import Cardinality, FieldSelector, SegmentSelector
@@ -12,7 +17,9 @@ from .values import (
     OneOfValues,
     RegexpValue,
     StringValue,
-)
+    )
+
+log = logging.getLogger(__name__)
 
 
 def get_type_for_check_type(value: str):
@@ -151,15 +158,22 @@ class HL7Transformer(lark.Transformer):
 
         if last:
             p = last
-            while p.level >= segment.level:
+            while p and p.level >= segment.level:
                 p = p.parent
             if p:
                 segment.set_parent(p)
         self._structure.append(segment)
         return segment
 
-    # def import_rule(self, rule_token: lark.Token, *args, **kwargs):
-    #     self._rules.append(rule_token.value)
+    def import_rule(self, rule_token: lark.Token, *args, **kwargs):
+        source = _read_source(rule_token.value.strip('"'))
+        log.info(f"importing {source}")
+        t = make_transformer(source)
+        self._rules.extend(t.get_rules())
+        self._structure.extend(t._structure)
+        log.info(
+            f"imported {len(t.get_rules())} rules, {len(t.get_structure())} from {source}"
+        )
 
     # structure handlers
     def get_rules(self) -> typing.List[FieldValidationRule]:
@@ -171,3 +185,25 @@ class HL7Transformer(lark.Transformer):
 
     def get_imports(self) -> typing.List[str]:
         return self._imports
+
+
+def _read_source(source_loc: str) -> str:
+    url = urlparse(source_loc)
+    if url.scheme == FILE_LOCATION:
+        with open(url.path, "rt") as f:
+            data = f.read()
+    elif url.scheme == PACKAGE_LOCATION:
+        pkg_name = url.hostname
+        pkg_res = url.path
+        data = pkgutil.get_data(pkg_name, pkg_res).decode("utf-8")
+    else:
+        raise RuleImportError(source_loc)
+    return data
+
+
+def make_transformer(rules: str, grammar: str = None) -> "HL7Transformer":
+    transformer = HL7Transformer()
+    parser = create_parser(grammar)
+    tree = parser.parse(rules)
+    transformer.transform(tree)
+    return transformer

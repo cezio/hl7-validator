@@ -41,6 +41,13 @@ class IntValue(BaseConverter):
 class AnyValue(BaseConverter):
     converter = bool
 
+    def eval(self, in_value: str) -> typing.Any:
+        try:
+            assert self.converter(in_value)
+            return True
+        except (ValueError, TypeError, AssertionError):
+            assert False, f"Invalid input {in_value} for {self.converter}"
+
 
 class RegexpValue(BaseValue):
     def __init__(self, re_value: str):

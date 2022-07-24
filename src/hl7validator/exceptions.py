@@ -10,4 +10,8 @@ class NotValid(BaseException):
         self.msg = msg
 
     def __str__(self):
-        return f"<NotValid(rule={self.rule}, selector={self.selector}, value={self.value} { self.msg or ''})>"
+        return f"<NotValid(rule={self.rule}, selector={self.selector}, value={self.value} {self.msg or ''})>"
+
+
+class RuleImportError(BaseValidatorError):
+    pass

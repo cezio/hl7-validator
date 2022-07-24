@@ -1,3 +1,8 @@
+// import "pkg://package.name/path/to/resource"
+// MSH
+//  PID 1
+//  PV1 1..n
+//
 // "MSH.9.1.1" must be "OML"
 // "MSH.9.1.2" must be "O21"
 // "MSH.3.1.1" must be not empty
@@ -12,14 +17,13 @@ start: structure
 
 structure: import_rules segments ruleset // first structure then field rules
 
-
 import_rules: (import_rule+)?
 
 import_rule: "import" ESCAPED_STRING  -> import_rule
 
 segments: (structure_segment+)? -> create_segment
 
-ruleset: rule+
+ruleset: (rule+)?
 
 rule: test_rule                       -> create_rule
     | base_rule                         -> create_rule
@@ -28,16 +32,17 @@ base_rule: selector_field predicate
 test_rule: base_rule "if" check_rule
 check_rule: selector_field test
 
-// ABC.1
-// ABC.1.2
-// ABC.1.2.3
-
-selector_field : "\"" + /[A-Z]{3}\.\d+(\.\d+)*/ + "\""  -> selector_field
-
 _selector_segment_a: /([A-Z]{3})/
 _selector_segment_b: /([A-Z]{2}[0-9]{1})/
 // MSH, PID, PV1
 selector_segment: _selector_segment_a | _selector_segment_b
+
+
+// ABC.1
+// ABC.1.2
+// ABC.1.2.3
+selector_field : "\"" + /([A-Z]{3}|[A-Z]{2}[0-9]{1})\.\d+(\.\d+)*/ + "\""  -> selector_field
+
 
 // selector: selector_field | selector_segment
 

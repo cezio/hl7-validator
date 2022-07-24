@@ -3,6 +3,8 @@ import pkgutil
 import lark
 
 DEFAULT_GRAMMAR = "resources/hl7validation.lark"
+FILE_LOCATION = r"file"
+PACKAGE_LOCATION = r"pkg"
 
 
 def create_parser(grammar: str = None) -> lark.Lark:

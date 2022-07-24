@@ -1,14 +1,19 @@
 import os
+
 from click.testing import CliRunner
 from lark import lark
 
-from hl7validator.parser import create_parser
-from hl7validator.validator import HL7Transformer,Validator
 from hl7validator.cli import main
+from hl7validator.mixins import Cardinality
+from hl7validator.parser import create_parser
+from hl7validator.predicates import MustBe
+from hl7validator.transformer import HL7Transformer
+from hl7validator.validator import Validator
+from hl7validator.values import AnyValue
 
 
 def test_parser_creation():
-    
+
     rules = """
  "MSH.3.1.1" must be string
  "MSH.9.1.1" must be "OML"
@@ -33,7 +38,7 @@ def test_parser_creation():
     _rules = tr.get_rules()
     assert _rules
     # discard any empty line
-    assert len(_rules) == len([r for r in rules.split('\n') if r.strip()])
+    assert len(_rules) == len([r for r in rules.split("\n") if r.strip()])
 
 
 def test_parser_validation_ok():
@@ -58,8 +63,11 @@ def test_parser_validation_ok():
     print(ctx.get_errors())
     assert ctx.is_valid
 
+
 def test_parser_validation_invalid():
-    test_msg = r'MSH|^~\\&|Invalid||TargetSystem|LabName|2007052713||OML^O21|12345|P|2.4\r"'
+    test_msg = (
+        r'MSH|^~\\&|Invalid||TargetSystem|LabName|2007052713||OML^O21|12345|P|2.4\r"'
+    )
     rules = """
 // this is a comment
 // this value must not be empty
@@ -85,32 +93,35 @@ def test_parser_validation_invalid():
 
 def test_parser_cli_error():
     this_dir = os.path.dirname(__file__)
-    tmsg = os.path.join(this_dir, 'resources', 'test.message.hl7')
-    trules = os.path.join(this_dir, 'resources', 'test.incorrect.rules')
+    tmsg = os.path.join(this_dir, "resources", "test.message.hl7")
+    trules = os.path.join(this_dir, "resources", "test.incorrect.rules")
     runner = CliRunner()
     out = runner.invoke(main, [trules, tmsg])
     assert out.exit_code == 1
 
+
 def test_parser_cli_ok():
     this_dir = os.path.dirname(__file__)
-    tmsg = os.path.join(this_dir, 'resources', 'test.message.hl7')
-    trules = os.path.join(this_dir, 'resources', 'test.correct.rules')
+    tmsg = os.path.join(this_dir, "resources", "test.message.hl7")
+    trules = os.path.join(this_dir, "resources", "test.correct.rules")
     runner = CliRunner()
     out = runner.invoke(main, [trules, tmsg])
     assert out.exit_code == 0
 
-def test_structure_validation_ok():
-    test_msg = (b'MSH|^~\\&|SrcSystem||TargetSystem|LabName|200705271331||OML^O21|12345|P|2.4\r' 
-               b'PID|1|0000|||\r' 
-               b'PV1||||\r'
-               b'OBR|||\r'
-               b'ABC||||\r'
-               b'NTE|||\r'
-               b'NTE|||\r'
-               )
+
+def test_structure_validation_complex():
+    test_msg = (
+        b"MSH|^~\\&|SrcSystem||TargetSystem|LabName|200705271331||OML^O21|12345|P|2.4\r"
+        b"PID|1|0000|||\r"
+        b"PV1||||\r"
+        b"OBR|||\r"
+        b"ABC||||\r"
+        b"NTE|||\r"
+        b"NTE|||\r"
+    )
 
     rules = """
-import "blahblah"
+// import "pkg://hl7validator/resources/base_hl7.rules"
 
  MSH
    PID  0..1
@@ -136,11 +147,84 @@ import "blahblah"
 """
     validator = Validator(rules=rules)
     ctx = validator.validate(test_msg)
-    for lm in ctx.log:
-        print(lm)
-    print('errors ---')
-    for err in ctx.get_errors():
+    assert len(ctx.log)
+    assert len(ctx.get_errors())
+    assert not ctx.is_valid
+    errors = ctx.get_errors()
+    for err in errors:
         print(err)
-        print((err.rule.context.message,))
+        print(err.rule.selector, err.is_error)
+    assert errors[0].selector.sel == "NTE"
+    assert errors[0].selector.cardinality == Cardinality.SEGMENT_AT_LEAST_ONE
+    assert errors[1].selector.sel == "NTE"
+    assert errors[1].selector.cardinality == Cardinality.SEGMENT_AT_MOST_ONE
+
+
+def test_structure_validation_import():
+    test_msg = (
+        b"MSH|^~\\&|SrcSystem|SrcSystemLabName|TargetSystem|LabName|200705271331||OML^O21|12345|P|2.4\r"
+        b"PID|1|0000|||\r"
+        b"PV1|aaa|||\r"
+        b"OBR|||\r"
+        b"ABC||||\r"
+        b"NTE|||\r"
+        b"NTE|||\r"
+    )
+
+    rules = """
+import "pkg://hl7validator/resources/base_hl7.rules"
+MSH
+  PID
+    PV1
+    NTE 0..n
+
+"PV1.1" must be not empty
+
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+    assert len(validator.transformer.get_rules()) == 5  # 4 rules from import
+    assert len(validator.transformer.get_structure()) == 2  # 1 rule for structure (MSH)
+    # for l in ctx.log:
+    #     print('log', l)
+    assert len(ctx.log) == 11  # 4 rules from import + 1 rule from local + 2 main structure rules (with 6 children inside)
+
+    # for r in validator.transformer.get_structure():
+    #     print('structure', r)
+    # for r in validator.transformer.get_rules():
+    #     print('rule', r)
+    # for l in ctx.log:
+    #     print('log', l)
+    # for err in ctx.get_errors():
+    #     print('err', err)
+    assert not len(ctx.get_errors())
     assert ctx.is_valid
-    assert False
+
+
+def test_structure_validation_import_bad_structure():
+    test_msg = b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+
+    rules = """
+import "pkg://hl7validator/resources/base_hl7.rules"
+// no other rules
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert len(ctx.log) == 5  # 4 rules from import + 1 import strucutre rule
+
+    assert len(validator.transformer.get_rules()) == 4  # 4 rules from import
+    assert len(validator.transformer.get_structure()) == 1  # 1 rule for structure (MSH)
+    assert not ctx.is_valid
+    assert len(ctx.get_errors()) == 3
+
+    errors = ctx.get_errors()
+    assert errors[0].selector.sel == "MSH.4"
+    assert errors[1].selector.sel == "MSH.5"
+    assert errors[2].selector.sel == "MSH.6"
+    assert isinstance(errors[0].rule.predicate, MustBe)
+    assert isinstance(errors[1].rule.predicate, MustBe)
+    assert isinstance(errors[2].rule.predicate, MustBe)
+    assert isinstance(errors[0].rule.predicate.expected, AnyValue)
+    assert isinstance(errors[1].rule.predicate.expected, AnyValue)
+    assert isinstance(errors[2].rule.predicate.expected, AnyValue)

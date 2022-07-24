@@ -1,0 +1,11 @@
+ MSH
+
+
+// sending application
+"MSH.4" must be not empty
+// sending facility
+"MSH.5" must be not empty
+// receiving application
+"MSH.6" must be not empty
+// receiving facility
+"MSH.7" must be not empty

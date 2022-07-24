@@ -1,13 +1,21 @@
+import logging
 import typing
 
 import attrs
 import hl7
 
+if typing.TYPE_CHECKING:
+    from .selectors import BaseSelector
+    from .rules import BasePredicate
+
+log = logging.getLogger(__name__)
+
 
 @attrs.define(auto_attribs=True)
 class LogMessage:
     msg: str
-    rule: typing.Any
+    rule: "BasePredicate"
+    selector: "BaseSelector" = None
     is_error: bool = False
 
 
@@ -25,6 +33,7 @@ class Context:
     log: typing.List[LogMessage] = attrs.field(factory=list)
 
     def add_msg(self, log_msg: LogMessage) -> "Context":
+        log.debug(f"adding message: {log_msg}")
         self.log.append(log_msg)
         return self
 

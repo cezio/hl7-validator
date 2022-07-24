@@ -5,18 +5,21 @@ import hl7
 
 from .context import LogMessage
 from .exceptions import NotValid
-from .mixins import ContextMixin, ValidateMixin, Cardinality
-from .context import Context
+from .mixins import Cardinality, ContextMixin, ValidateMixin
 
 if typing.TYPE_CHECKING:
     from .predicates import BasePredicate
-    from .selectors import BaseSelector,  SegmentSelector
+    from .selectors import BaseSelector, SegmentSelector
 
 
 class FieldValidationRule(ContextMixin, ValidateMixin):
     """
     Validation rule validates one specific check on the message
     """
+
+    selector: "BaseSelector"
+    predicate: "BasePredicate"
+    test_rule: "BaseRule"
 
     def __init__(
         self,
@@ -36,13 +39,16 @@ class FieldValidationRule(ContextMixin, ValidateMixin):
             self.test_rule.validate()
         try:
             ret = self.predicate.validate(self.selector)
-            self.context.add_msg(LogMessage(msg=f"Rule {self}: ok", rule=self))
+            self.context.add_msg(
+                LogMessage(msg=f"Rule {self}: ok", rule=self, selector=self.selector)
+            )
             return ret
         except NotValid as err:
             self.context.add_msg(
                 LogMessage(
                     msg=f"validation error for {err.selector} value {err.value}",
                     rule=self,
+                    selector=err.selector,
                     is_error=True,
                 )
             )
@@ -58,12 +64,19 @@ class FieldValidationRule(ContextMixin, ValidateMixin):
         return f"<{self.__class__.__name__}: {self.selector} {self.predicate} {', '.join(extra)}>"
 
 
-
 def _get_segments(message: hl7.Message, sel: str) -> typing.List[hl7.Segment]:
-    segments = [(idx, seg,) for idx, seg in enumerate(message) if seg[0][0] == sel]
+    segments = [
+        (
+            idx,
+            seg,
+        )
+        for idx, seg in enumerate(message)
+        if seg[0][0] == sel
+    ]
     return segments
 
-def _validate_segment(selector: 'SegmentSelector', message: hl7.Message):
+
+def _validate_segment(selector: "SegmentSelector", message: hl7.Message):
     cd = selector.cardinality
     sel = selector.sel
     segments = _get_segments(message, sel)
@@ -71,18 +84,32 @@ def _validate_segment(selector: 'SegmentSelector', message: hl7.Message):
     sel_len = len(segments)
 
     if cd == Cardinality.SEGMENT_NONE and sel_len > 0:
-        raise NotValid(selector=selector, rule=None, value=selector.sel, msg=f'not expected {sel}')
+        raise NotValid(
+            selector=selector, rule=None, value=selector.sel, msg=f"not expected {sel}"
+        )
     elif cd == Cardinality.SEGMENT_ONE and sel_len < 1:
-        raise NotValid(selector=selector, rule=None, value=selector.sel, msg=f'not enough {sel}')
+        raise NotValid(
+            selector=selector, rule=None, value=selector.sel, msg=f"not enough {sel}"
+        )
     elif cd == Cardinality.SEGMENT_ONE and sel_len > 1:
-        raise NotValid(selector=selector, rule=None, value=selector.sel, msg=f'too much {sel}')
+        raise NotValid(
+            selector=selector, rule=None, value=selector.sel, msg=f"too much {sel}"
+        )
     elif cd == Cardinality.SEGMENT_AT_MOST_ONE and sel_len > 1:
-        raise NotValid(selector=selector, rule=None, value=selector.sel, msg=f'too much {sel}')
+        raise NotValid(
+            selector=selector, rule=None, value=selector.sel, msg=f"too much {sel}"
+        )
     elif cd == Cardinality.SEGMENT_AT_LEAST_ONE and sel_len < 1:
-        raise NotValid(selector=selector, rule=None, value=selector.sel, msg=f'not enough {sel}')
+        raise NotValid(
+            selector=selector, rule=None, value=selector.sel, msg=f"not enough {sel}"
+        )
 
 
-def _cut_message_to_selector(current_selector: 'SegmentSelector', current_message: hl7.Message, next_selector: 'SegmentSelector'):
+def _cut_message_to_selector(
+    current_selector: "SegmentSelector",
+    current_message: hl7.Message,
+    next_selector: "SegmentSelector",
+):
     out = []
     current_msg = []
     segidx = 0
@@ -92,7 +119,9 @@ def _cut_message_to_selector(current_selector: 'SegmentSelector', current_messag
             out.append(current_msg)
             current_msg = [seg]
         # rest of the message
-        elif (current_msg or out) and (next_selector and seg[0][0] == next_selector.sel):
+        elif (current_msg or out) and (
+            next_selector and seg[0][0] == next_selector.sel
+        ):
             out.append(current_msg)
             current_msg = []
             break
@@ -102,17 +131,18 @@ def _cut_message_to_selector(current_selector: 'SegmentSelector', current_messag
     if current_msg:
         out.append(current_msg)
     rest = current_message[segidx:]
-    print('returning for', current_selector.sel, out)
-    print(' rest', (rest,))
     return out, rest
 
 
-
-
 class SegmentValidationRule(ContextMixin, ValidateMixin):
-    segment: 'SegmentSelector'
+    selector: "SegmentSelector"
 
-    def __init__(self, selector: 'SegmentSelector'):
+    def __str__(self):
+        return f"<{self.__class__.__name__}: (selector={self.selector})>"
+
+    __repr__ = __str__
+
+    def __init__(self, selector: "SegmentSelector"):
         self.selector = selector
 
     def _validate(self):
@@ -133,33 +163,39 @@ class SegmentValidationRule(ContextMixin, ValidateMixin):
         current_message = msg[1:]
         for cidx, c in enumerate(self.selector.children):
             try:
-                nextc = self.selector.children[cidx+1]
+                nextc = self.selector.children[cidx + 1]
             except IndexError:
                 nextc = None
-            msg_chunks, current_message = _cut_message_to_selector(c, current_message, nextc)
-            print('children', c, (msg_chunks,), (current_message,))
+            msg_chunks, current_message = _cut_message_to_selector(
+                c, current_message, nextc
+            )
             for msg_chunk in msg_chunks:
-
                 subctx = copy(self.context)
                 subctx.message = msg_chunk
                 subv = SegmentValidationRule(c)
                 subv.set_context(subctx).validate()
 
-
     def validate(self, *args, **kwargs) -> typing.Any:
         try:
             self._validate()
-        except NotValid as err:
             self.context.add_msg(
                     LogMessage(
-                            msg=f"validation error for {err.selector} value {err.value}: {err.msg}",
+                            msg=f"validation {self} -> ok",
                             rule=self,
-                            is_error=True,
+                            selector=self.selector,
+                            is_error=False,
                             )
                     )
+        except NotValid as err:
+            self.context.add_msg(
+                LogMessage(
+                    msg=f"validation error for {err.selector} value {err.value}: {err.msg}",
+                    rule=self,
+                    selector=err.selector,
+                    is_error=True,
+                )
+            )
         # except Exception as err:
         #     self.context.add_msg(
         #             LogMessage(msg=f"internal error {err}", rule=self, is_error=True)
         #             )
-
-

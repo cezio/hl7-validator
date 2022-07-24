@@ -7,6 +7,8 @@ from .values import BaseValue
 
 
 class BasePredicate(ContextMixin, ValidateMixin):
+    expected: BaseValue
+
     def __init__(self, expected: BaseValue):
         self.expected = expected
 

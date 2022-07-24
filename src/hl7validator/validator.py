@@ -1,13 +1,16 @@
+import logging
 import typing
 
 import hl7
 import lark
 
 from .context import Context
+from .mixins import ContextMixin, ValidateMixin
 from .parser import create_parser
 from .predicates import BasePredicate
-from .transformer import HL7Transformer
-from .mixins import ValidateMixin, ContextMixin
+from .transformer import make_transformer
+
+log = logging.getLogger(__name__)
 
 
 class Validator(ContextMixin, ValidateMixin):
@@ -62,26 +65,32 @@ class Validator(ContextMixin, ValidateMixin):
         :param msg:
         :return:
         """
-        if not isinstance(msg, hl7.Message):
-            msg = hl7.parse(msg)
+
         ctx = self.context or Context(message=msg)
 
         if not ctx.message:
-            raise ValueError('empty message')
+            raise ValueError("empty message")
+
+        if not isinstance(ctx.message, hl7.Message):
+            ctx.message = hl7.parse(ctx.message)
+
         self.set_context(ctx)
 
-        self.transformer = transformer = HL7Transformer()
-        if not isinstance(msg, hl7.Message):
-            msg = hl7.parse(msg)
-        tree = self._get_parser_tree(rules=self.rules, grammar=self.grammar)
-        transformer.transform(tree)
-        imports = transformer.get_imports()
+        self.transformer = transformer = make_transformer(self.rules, self.grammar)
+
         rules = transformer.get_rules()
         struct = transformer.get_structure()
+        orig_msg = ctx.message
+
         # first: check structure
         for seg in struct:
+            log.info(f"validating {seg} in structure")
+            # reset msg for each rule
+            ctx.message = orig_msg
             seg.set_context(ctx).validate()
         # then check specific fields
+        ctx.message = orig_msg
         for rule in rules:
+            log.info(f"validating {rule} in payload with {ctx}")
             rule.set_context(ctx).validate()
         return ctx

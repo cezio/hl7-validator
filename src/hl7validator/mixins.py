@@ -1,5 +1,6 @@
-from enum import Enum
 import typing
+from enum import Enum
+
 from .context import Context
 
 

@@ -2,8 +2,8 @@ import re
 import typing
 
 import hl7
-from .mixins import Cardinality
 
+from .mixins import Cardinality
 
 
 class BaseSelector:
@@ -11,15 +11,16 @@ class BaseSelector:
     sel_regex: typing.ClassVar[re.Pattern]
 
     def __init__(self, sel):
-        assert self.__class__.validate_selector(sel)
         self.sel = sel
+        assert self.__class__.validate_selector(sel)
+
 
     @classmethod
     def validate_selector(cls, val) -> bool:
         return cls.sel_regex.match(val)
 
-    def get_value(self, context: hl7.Component):
-        sel = context[self.sel]
+    def get_value(self, msg: hl7.Component):
+        sel = msg[self.sel]
         return sel
 
     def __str__(self):
@@ -31,7 +32,7 @@ class BaseSelector:
 
 class SegmentSelector(BaseSelector):
     # ABC only
-    sel_regex = re.compile(r"([A-Z]{3}|[A-Z]{2}[0-9]{1})")
+    sel_regex = re.compile(r"([A-Z]{2}[A-Z0-9]{1})")
     cardinality: Cardinality
     parent: "typing.Optional[SegmentSelector]"
     level: int
@@ -50,7 +51,7 @@ class SegmentSelector(BaseSelector):
         self.children = []
         self.set_parent(parent)
 
-    def set_parent(self, parent: 'SegmentSelector'):
+    def set_parent(self, parent: "SegmentSelector"):
 
         self.parent = parent
         if parent:
@@ -69,7 +70,7 @@ class SegmentSelector(BaseSelector):
 
 class FieldSelector(BaseSelector):
     # ABC.1, ABC.1.1, ABC.1.2.3
-    sel_regex = re.compile(r"^[A-Z]{3}\.[0-9]+(\.[0-9]+)*?")
+    sel_regex = re.compile(r"^[A-Z]{2}[A-Z0-9]{1}\.[0-9]+(\.[0-9]+)*?")
 
 
 __all__ = ["FieldSelector", "SegmentSelector"]
