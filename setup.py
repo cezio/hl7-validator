@@ -10,7 +10,7 @@ with pathlib.Path("requirements.in").open() as requirements_txt:
 
 setup(
     name="hl7-validator",
-    version="0.2",
+    version="0.3",
     description="HL7 validation helper",
     long_description="",
     author="Cezary Statkiewicz",
