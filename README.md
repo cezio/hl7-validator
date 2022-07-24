@@ -70,8 +70,52 @@ Message is valid.
 
 A HL7 message can be validated with a set of rules written in human-friendly form with a dedicated DSL. Each rule is one
 line.
-A rule is a check on a specific field if the value of this field matches certain conditions. Field is specified with
-accessor notation: `AAA.1.1` (or `AAA.1.1.1` if you need to access a subfield).
+
+## Importing rules
+
+You can import rules from other rule files. Imported rules will be merged with your current validator. Mind that the
+file is parsed from top to bottom, and importing rules will add them at specific state of current validator. It's
+advised to import rules at the beginning of rules file.
+You can refer other rules by using URL-like notation in two ways:
+
+* by using `file://` protocol to point to a specific file from file system, for
+  example `file://validation/rules/olm_o21_base.rules` will import rules from `validation/rules/olm_o21_base.rules`
+  relative path.
+* by using `pkg://` protocol to point to a rule available as a resource from another python package. For
+  example, `pkg://lab.medsystem.com/validation/rules/base.rules` will import rules from `lab.medsystem.com` package,
+  from `validation/rules/base.rules` resource location within that package.
+
+## Structure check rules
+
+Structure check rules allow to check if the structure of the message matches specific scheme. Structure check is defined
+as
+a list of names of segments. A segment can be at a specific level of structure. Ones with no indentation are root-level,
+anc can be
+placed within the message anywhere. When a segment is indented, then it's considered as dependent on previous one on the
+higher level.
+Additionally, each segment can have cardinality specified, which describes a number of occurrences of a segment within
+the structure.
+
+Cardinalities allowed:
+
+* `0` - no occurrence
+* `1` - only one occurrence (the default)
+* `0..1` - at most one
+* `1..0` - at least one
+* `0..n` - any number
+
+```
+MSH
+PID
+  PV1 1..n
+    DG1 1..n
+    NTE 0..n
+```
+
+## Field value rules
+
+A field value rule is a check on a specific field if the value of this field matches certain conditions. Field is
+specified with accessor notation: `AAA.1.1` (or `AAA.1.1.1` if you need to access a subfield).
 See [accessor documentation in python-hl7 for details](https://python-hl7.readthedocs.io/en/latest/accessors.html).
 Once field selection is specified, value conditions can be specified. You can specify if a value should:
 
@@ -83,11 +127,26 @@ Once field selection is specified, value conditions can be specified. You can sp
 * be dependent on another field (current field will be checked if other field's check will be positive; syntax for
   dependent checks is similar to base checks
 
+## Comments
+
 You can also put comments prepended with `//` chars.
 
-Sample set of rules:
+## Sample set of rules
 
 ```
+// importing rules from other files - importing will merge strucutre/field rules with current validator
+import "file://path/to/rules.file"
+// you can import from a file (with `file://` protocol) or from a package (with `pkg://` protocol) 
+import "pkg://package.name/path/to/a/resource/with/rules.file"
+// below structure validation allows to specify groups of segments and cardinality of each seagment within the group:
+// the default is `1`
+// but you can also specify `0..1` (at most one), `1..n` (at least one), `0..n` (any number), or `0` (no segment).
+MSH
+  PID
+    PV1 1..n
+    NTE 0..n
+
+
 // this is a comment
 // this value must not be empty
  "MSH.3.1" must be not empty

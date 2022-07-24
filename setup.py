@@ -22,7 +22,7 @@ setup(
     tests_require=["pytest"],
     install_requires=install_requires,
     package_data={
-        "hl7validator.resources": ["*.lark"],
+        "hl7validator.resources": ["*.lark", "*.rules"],
         "hl7validator": ["*.txt", "*.md", "*.rst"],
     },
     packages=find_namespace_packages(where="src/", exclude=["tests", "tests.*"]),
