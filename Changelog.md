@@ -1,5 +1,9 @@
 # HL7 Validation changelog
 
+## 0.3.2 (2022-08-09)
+
+* minor improvements and bugfixes
+
 ## 0.3 (2022-07-24)
 
 * added structure checks

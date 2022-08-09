@@ -2,15 +2,11 @@ import pathlib
 import pkg_resources
 from setuptools import setup, find_namespace_packages
 
-with pathlib.Path("requirements.in").open() as requirements_txt:
-    install_requires = [
-        str(requirement)
-        for requirement in pkg_resources.parse_requirements(requirements_txt)
-    ]
+install_requires = ['hl7', 'lark', 'click']
 
 setup(
     name="hl7-validator",
-    version="0.3.1",
+    version="0.3.2",
     description="HL7 validation helper",
     long_description="",
     author="Cezary Statkiewicz",
