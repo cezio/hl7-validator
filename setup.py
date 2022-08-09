@@ -2,13 +2,14 @@ import pathlib
 import pkg_resources
 from setuptools import setup, find_namespace_packages
 
-install_requires = ['hl7', 'lark', 'click']
+install_requires = ['attrs', 'hl7', 'lark', 'click']
 
 setup(
     name="hl7-validator",
-    version="0.3.2",
+    version="0.3.3",
     description="HL7 validation helper",
-    long_description="",
+    long_description="HL7 Validation helper library allows to validate HL7 messages using human-readable rules files.\n"
+                     " See `Readme <https://github.com/cezio/hl7-validator/tree/master#readme>`_ for details.",
     author="Cezary Statkiewicz",
     author_email="c.statkiewicz@gmail.com, cezio@thelirium.net",
     license="MIT",

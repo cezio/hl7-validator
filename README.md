@@ -7,7 +7,13 @@ validation rules. A HL7 message will be checked against those rules.
 
 ## Installation
 
-This is a work in progress. At the moment, the only way to install this tool is to use cloned source (into virtual env):
+This is a work in progress. 
+
+```shell
+pip install hl7validator
+```
+
+You can also use source code to install the package into a venv:
 
 ```shell
 $ git clone https://github.com/cezio/hl7-validator.git

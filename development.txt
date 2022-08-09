@@ -5,7 +5,9 @@
 #    pip-compile development.in
 #
 attrs==22.1.0
-    # via pytest
+    # via
+    #   -r requirements.in
+    #   pytest
 bleach==5.0.1
     # via readme-renderer
 build==0.8.0
