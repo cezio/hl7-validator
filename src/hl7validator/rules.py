@@ -82,7 +82,6 @@ def _validate_segment(selector: "SegmentSelector", message: hl7.Message):
     segments = _get_segments(message, sel)
 
     sel_len = len(segments)
-
     if cd == Cardinality.SEGMENT_NONE and sel_len > 0:
         raise NotValid(
             selector=selector, rule=None, value=selector.sel, msg=f"not expected {sel}"
@@ -104,7 +103,6 @@ def _validate_segment(selector: "SegmentSelector", message: hl7.Message):
             selector=selector, rule=None, value=selector.sel, msg=f"not enough {sel}"
         )
 
-
 def _cut_message_to_selector(
     current_selector: "SegmentSelector",
     current_message: hl7.Message,
@@ -113,14 +111,21 @@ def _cut_message_to_selector(
     out = []
     current_msg = []
     segidx = 0
+    # set only when we hit first selector occurence
+    has_match = False
+
     for segidx, seg in enumerate(current_message):
         seg_name = seg[0][0]
-        if current_msg and seg[0][0] == current_selector.sel:
+        if seg_name == current_selector.sel:
+            has_match = True
+        if not has_match:
+            continue
+        if current_msg and seg_name == current_selector.sel:
             out.append(current_msg)
             current_msg = [seg]
         # rest of the message
         elif (current_msg or out) and (
-            next_selector and seg[0][0] == next_selector.sel
+            next_selector and seg_name == next_selector.sel
         ):
             out.append(current_msg)
             current_msg = []
@@ -149,7 +154,6 @@ class SegmentValidationRule(ContextMixin, ValidateMixin):
         msg = self.context.message
         # for self, we should check if current selector exists in one instance
         self_sel = copy(self.selector)
-        self_sel.cardinality = Cardinality.SEGMENT_ONE
         _validate_segment(self_sel, msg)
 
         # validate children cardinality

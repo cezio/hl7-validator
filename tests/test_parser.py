@@ -11,7 +11,6 @@ from hl7validator.transformer import HL7Transformer
 from hl7validator.validator import Validator
 from hl7validator.values import AnyValue
 
-
 def test_parser_creation():
 
     rules = """
@@ -60,7 +59,6 @@ def test_parser_validation_ok():
 """
     validator = Validator(rules=rules)
     ctx = validator.validate(test_msg)
-    print(ctx.get_errors())
     assert ctx.is_valid
 
 
@@ -151,9 +149,6 @@ def test_structure_validation_complex():
     assert len(ctx.get_errors())
     assert not ctx.is_valid
     errors = ctx.get_errors()
-    for err in errors:
-        print(err)
-        print(err.rule.selector, err.is_error)
     assert errors[0].selector.sel == "NTE"
     assert errors[0].selector.cardinality == Cardinality.SEGMENT_AT_LEAST_ONE
     assert errors[1].selector.sel == "NTE"
@@ -185,18 +180,8 @@ MSH
     ctx = validator.validate(test_msg)
     assert len(validator.transformer.get_rules()) == 5  # 4 rules from import
     assert len(validator.transformer.get_structure()) == 2  # 1 rule for structure (MSH)
-    # for l in ctx.log:
-    #     print('log', l)
     assert len(ctx.log) == 11  # 4 rules from import + 1 rule from local + 2 main structure rules (with 6 children inside)
 
-    # for r in validator.transformer.get_structure():
-    #     print('structure', r)
-    # for r in validator.transformer.get_rules():
-    #     print('rule', r)
-    # for l in ctx.log:
-    #     print('log', l)
-    # for err in ctx.get_errors():
-    #     print('err', err)
     assert not len(ctx.get_errors())
     assert ctx.is_valid
 
@@ -228,3 +213,125 @@ import "pkg://hl7validator/resources/base_hl7.rules"
     assert isinstance(errors[0].rule.predicate.expected, AnyValue)
     assert isinstance(errors[1].rule.predicate.expected, AnyValue)
     assert isinstance(errors[2].rule.predicate.expected, AnyValue)
+
+
+def test_structure_validation_duplicate_segment():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                )
+
+    rules = """
+SE1
+SE2
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert not ctx.is_valid
+    errors = ctx.get_errors()
+    assert len(errors) == 1
+    assert errors[0].selector.sel == 'SE2'
+
+
+def test_structure_validation_order():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                )
+
+    rules = """
+SE2
+SE1
+SE3
+MSH
+SE2
+  SE3
+  
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert len(validator.transformer.get_rules()) == 0
+    assert len(validator.transformer.get_structure()) == 5
+    assert ctx.is_valid
+
+
+def test_structure_validation_order_duplicated():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                b"SE2||||\r"
+                )
+
+    rules = """
+// the message is not valid, because there's a SE2 segment without following SE3 
+SE2
+  SE3
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert not ctx.is_valid
+def test_structure_validation_order_duplicated_chain():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                b"SE4||||\r" )
+
+    rules = """ 
+SE2
+  SE3
+    SE4
+SE3
+  SE4
+SE5 0
+SE2 0..1
+  SE3 0..1
+    SE5 0..1
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert ctx.is_valid
+
+
+def test_structure_validation_zero_segment():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                b"SE2||||\r" )
+
+    rules = """ 
+SE2 1..n
+  SE3
+     SE4 0
+     SE2
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert ctx.is_valid
+
+def test_structure_validation_one_or_more_segment():
+    test_msg = (b"MSH|^~\\&|||||200705271331||OML^O21|12345|P|2.4\r"
+                b"SE1||||\r"
+                b"SE2||||\r"
+                b"SE3||||\r"
+                b"SE2||||\r" )
+
+    rules = """ 
+SE2 1..n
+  SE3
+     SE4 1..n
+"""
+    validator = Validator(rules=rules)
+    ctx = validator.validate(test_msg)
+
+    assert not ctx.is_valid
