@@ -2,10 +2,8 @@
 
 
 // sending application
-"MSH.4" must be not empty
-// sending facility
-"MSH.5" must be not empty
+"MSH.3" must be not empty
 // receiving application
-"MSH.6" must be not empty
-// receiving facility
-"MSH.7" must be not empty
+"MSH.5" must be not empty
+// version is required
+"MSH.12" must match r"\d+\.\d+"
