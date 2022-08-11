@@ -15,6 +15,7 @@ def main(
 ):
     v = Validator(rules=rules.read())
     ctx = v.validate(message.read())
+    t = v.transformer
     if not ctx.is_valid:
         if not quiet:
             click.echo("Message is invalid:")
@@ -23,6 +24,9 @@ def main(
                     click.echo(f" * {log_msg.msg} | {str(log_msg.rule)}")
         click_ctx.exit(1)
     if not quiet:
+        click.echo(f"processed {len(t.get_structure())} structure rules"
+                   f" with {sum(len(s.all_rules()) for s in t.get_structure())} selectors"
+                   f" and {len(t.get_rules())} value rules")
         click.echo("Message is valid.")
     click_ctx.exit(0)
 

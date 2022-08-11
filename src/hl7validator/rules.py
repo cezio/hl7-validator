@@ -203,3 +203,16 @@ class SegmentValidationRule(ContextMixin, ValidateMixin):
         #     self.context.add_msg(
         #             LogMessage(msg=f"internal error {err}", rule=self, is_error=True)
         #             )
+
+    def all_rules(self) -> 'list[SegmentValidationRule]':
+        """
+        Returns flat list of all rules for current entry
+        :return:
+        """
+        out = [self.selector]
+        c = self.selector.children.copy()
+        while c:
+            el = c.pop()
+            out.extend(el.children.copy())
+            out.append(el)
+        return out
