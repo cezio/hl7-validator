@@ -178,9 +178,9 @@ MSH
 """
     validator = Validator(rules=rules)
     ctx = validator.validate(test_msg)
-    assert len(validator.transformer.get_rules()) == 5  # 4 rules from import
+    assert len(validator.transformer.get_rules()) == 4  # 4 rules from import
     assert len(validator.transformer.get_structure()) == 2  # 1 rule for structure (MSH)
-    assert len(ctx.log) == 11  # 4 rules from import + 1 rule from local + 2 main structure rules (with 6 children inside)
+    assert len(ctx.log) == 10  # 3 rules from import + 1 rule from local + 2 main structure rules (with 6 children inside)
 
     assert not len(ctx.get_errors())
     assert ctx.is_valid
@@ -196,23 +196,20 @@ import "pkg://hl7validator/resources/base_hl7.rules"
     validator = Validator(rules=rules)
     ctx = validator.validate(test_msg)
 
-    assert len(ctx.log) == 5  # 4 rules from import + 1 import strucutre rule
+    assert len(ctx.log) == 4  # 3 rules from import + 1 import strucutre rule
 
-    assert len(validator.transformer.get_rules()) == 4  # 4 rules from import
+    assert len(validator.transformer.get_rules()) == 3  # 4 rules from import
     assert len(validator.transformer.get_structure()) == 1  # 1 rule for structure (MSH)
     assert not ctx.is_valid
-    assert len(ctx.get_errors()) == 3
+    assert len(ctx.get_errors()) == 2
 
     errors = ctx.get_errors()
-    assert errors[0].selector.sel == "MSH.4"
+    assert errors[0].selector.sel == "MSH.3"
     assert errors[1].selector.sel == "MSH.5"
-    assert errors[2].selector.sel == "MSH.6"
     assert isinstance(errors[0].rule.predicate, MustBe)
     assert isinstance(errors[1].rule.predicate, MustBe)
-    assert isinstance(errors[2].rule.predicate, MustBe)
     assert isinstance(errors[0].rule.predicate.expected, AnyValue)
     assert isinstance(errors[1].rule.predicate.expected, AnyValue)
-    assert isinstance(errors[2].rule.predicate.expected, AnyValue)
 
 
 def test_structure_validation_duplicate_segment():
