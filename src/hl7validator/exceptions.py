@@ -1,3 +1,5 @@
+import hl7
+
 class BaseValidatorError(Exception):
     pass
 
@@ -15,3 +17,12 @@ class NotValid(BaseException):
 
 class RuleImportError(BaseValidatorError):
     pass
+
+class MessageMalformedError(BaseValidatorError):
+    def __init__(self, selector: str, message: hl7.Message, original_error: Exception):
+        self.selector = selector
+        self.message = message
+        self.original_error = original_error
+
+    def __str__(self):
+        return f"<MessageMalformed={self.selector}, error={self.original_error}>"

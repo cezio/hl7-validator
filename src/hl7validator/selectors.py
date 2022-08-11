@@ -3,6 +3,7 @@ import typing
 
 import hl7
 
+from .exceptions import MessageMalformedError
 from .mixins import Cardinality
 
 
@@ -20,8 +21,11 @@ class BaseSelector:
         return cls.sel_regex.match(val)
 
     def get_value(self, msg: hl7.Component):
-        sel = msg[self.sel]
-        return sel
+        try:
+            sel = msg[self.sel]
+            return sel
+        except (KeyError, IndexError,) as err:
+            raise MessageMalformedError(self.sel, msg, err)
 
     def __str__(self):
         return f"<{self.__class__.__name__} sel={self.sel}>"
